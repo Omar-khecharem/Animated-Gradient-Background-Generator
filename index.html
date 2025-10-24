@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Animated Gradient Background Generator</title>
+  <style>
+    :root{--bg-angle:300deg;--anim-duration:18s}
+    *{box-sizing:border-box;font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px;background:#f4f6f8}
+    .app{width:100%;max-width:980px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(13,38,59,0.08);overflow:hidden}
+
+    header{padding:20px 24px;border-bottom:1px solid #eef2f6;display:flex;align-items:center;justify-content:space-between}
+    header h1{margin:0;font-size:16px}
+    .attribution{font-size:12px;color:#667085}
+
+    main{display:grid;grid-template-columns:1fr 420px;gap:24px;padding:24px}
+
+    /* Left panel (controls) */
+    .controls{display:flex;flex-direction:column;gap:16px}
+
+    .row{display:flex;gap:12px;align-items:center}
+    label{font-size:13px;color:#0f172a}
+    input[type="text"], input[type="number"]{padding:8px 10px;border-radius:8px;border:1px solid #e6eef8;background:#fbfdff}
+
+    .color-list{display:flex;flex-direction:column;gap:8px}
+    .color-item{display:flex;align-items:center;gap:8px}
+    .color-swatch{width:44px;height:44px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)}
+    .color-controls{display:flex;gap:8px;align-items:center}
+    .btn{padding:8px 10px;border-radius:8px;border:0;background:#eef2ff;cursor:pointer}
+    .btn.positive{background:#0ea5a4;color:#fff}
+    .btn.ghost{background:transparent;border:1px solid #e6eef8}
+
+    /* Right panel (preview) */
+    .preview-panel{display:flex;flex-direction:column;gap:12px}
+    .preview{height:320px;border-radius:10px;overflow:hidden;position:relative;border:1px solid #eef2f6}
+    .gradient-background{width:100%;height:100%;background:linear-gradient(var(--bg-angle), deepskyblue, darkviolet, blue);background-size:180% 180%;animation:gradient-animation var(--anim-duration) ease infinite}
+    @keyframes gradient-animation{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+    .css-block{background:#0b1220;color:#e6eef8;padding:12px;border-radius:8px;font-family:monospace;font-size:12px;white-space:pre-wrap}
+
+    footer{padding:12px 24px;border-top:1px solid #eef2f6;display:flex;justify-content:space-between;align-items:center}
+
+    .small{font-size:12px;color:#475569}
+
+    /* responsive */
+    @media (max-width:880px){main{grid-template-columns:1fr;}
+      .preview{height:220px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application">
+    <header>
+      <h1>Animated Gradient Background Generator</h1>
+      <div class="attribution">Created by <strong>Omar</strong> — based on John Polacek / Manuel Pinto</div>
+    </header>
+
+    <main>
+      <section class="controls" aria-label="Contrôles">
+        <div class="row">
+          <label for="angle">Angle</label>
+          <input id="angle" type="number" min="0" max="360" value="300"> <span class="small">degrés</span>
+        </div>
+
+        <div class="row">
+          <label for="speed">Speed</label>
+          <input id="speed" type="range" min="1" max="20" value="5">
+          <span id="speedValue" class="small">5</span>
+        </div>
+
+        <div>
+          <label>Couleurs</label>
+          <div class="color-list" id="colorList"></div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn" id="addColor">+ Ajouter une couleur</button>
+            <button class="btn ghost" id="randomBtn">RANDOM</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button class="btn positive" id="applyBtn">Appliquer</button>
+          <button class="btn" id="copyCss">Copier CSS</button>
+        </div>
+      </section>
+
+      <aside class="preview-panel">
+        <div class="preview">
+          <div id="gradientPreview" class="gradient-background" aria-hidden="true"></div>
+        </div>
+
+        <div>
+          <label>CSS généré</label>
+          <div id="cssBlock" class="css-block"></div>
+        </div>
+
+        <div class="small">background-size et animation-duration sont automatiquement ajustés selon la vitesse.</div>
+      </aside>
+    </main>
+
+    <footer>
+      <div class="small">Open sourced on Github</div>
+      <div class="small"> by Omar khecharem</div>
+    </footer>
+  </div>
+
+  <script>
+
+    const randHex = ()=>('#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0'));
+
+    
+    const state = {colors:['#00bfff','#4b0082','#0000ff'], angle:300, speed:5};
+
+    
+    const colorListEl = document.getElementById('colorList');
+    const angleEl = document.getElementById('angle');
+    const speedEl = document.getElementById('speed');
+    const speedValueEl = document.getElementById('speedValue');
+    const gradientPreview = document.getElementById('gradientPreview');
+    const cssBlock = document.getElementById('cssBlock');
+    const addColorBtn = document.getElementById('addColor');
+    const randomBtn = document.getElementById('randomBtn');
+    const applyBtn = document.getElementById('applyBtn');
+    const copyCssBtn = document.getElementById('copyCss');
+
+    function renderColorList(){
+      colorListEl.innerHTML='';
+      state.colors.forEach((c,i)=>{
+        const item = document.createElement('div'); item.className='color-item';
+        const swatch = document.createElement('div'); swatch.className='color-swatch'; swatch.style.background=c;
+        const input = document.createElement('input'); input.type='text'; input.value=c; input.style.width='120px';
+        input.addEventListener('input',e=>{ const v=e.target.value.trim(); state.colors[i]=v; swatch.style.background=v; updatePreview(); });
+        const colorInput = document.createElement('input'); colorInput.type='color'; colorInput.value=toHex(c);
+        colorInput.addEventListener('input',e=>{ state.colors[i]=e.target.value; input.value=e.target.value; swatch.style.background=e.target.value; updatePreview();});
+        const remove = document.createElement('button'); remove.className='btn'; remove.textContent='Supprimer'; remove.addEventListener('click',()=>{ state.colors.splice(i,1); renderColorList(); updatePreview(); });
+        item.appendChild(swatch); item.appendChild(input); item.appendChild(colorInput); item.appendChild(remove);
+        colorListEl.appendChild(item);
+      });
+    }
+
+    function toHex(col){
+      if(!col) return '#000000';
+      if(col.startsWith('#') && (col.length===7||col.length===4)) return normalizeHex(col);
+      // try parsing rgb(...) to hex
+      try{
+        const ctx = document.createElement('canvas').getContext('2d'); ctx.fillStyle = col; return normalizeHex(rgbToHex(ctx.fillStyle));
+      }catch(e){return '#000000'}
+    }
+    function normalizeHex(h){ if(h.length===4) return '#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return h; }
+    function rgbToHex(rgb){ // rgb(..)
+      if(rgb.startsWith('#')) return rgb;
+      const nums = rgb.replace(/[rgba()\s]/g,'').split(',').slice(0,3).map(Number);
+      return '#'+nums.map(n=>n.toString(16).padStart(2,'0')).join('');
+    }
+
+    function buildGradientCSS(){
+      const angle = state.angle;
+      const list = state.colors.join(',');
+      const duration = Math.max(1, Math.round(40 / state.speed)); // map speed to duration
+      return `background: linear-gradient(${angle}deg, ${list});\nbackground-size: 180% 180%;\nanimation: gradient-animation ${duration}s ease infinite;\n\n@keyframes gradient-animation {\n  0% { background-position: 0% 50%; }\n  50% { background-position: 100% 50%; }\n 100% { background-position: 0% 50%; }\n}`;
+    }
+
+    function updatePreview(){
+    
+      state.angle = Number(angleEl.value) || 0;
+      state.speed = Number(speedEl.value) || 5;
+
+   
+      document.documentElement.style.setProperty('--bg-angle', state.angle+'deg');
+      const duration = Math.max(1, Math.round(40 / state.speed));
+      document.documentElement.style.setProperty('--anim-duration', duration+'s');
+
+   
+      const gradient = `linear-gradient(${state.angle}deg, ${state.colors.join(',')})`;
+      gradientPreview.style.background = gradient;
+      gradientPreview.style.backgroundSize = '180% 180%';
+      gradientPreview.style.animation = `gradient-animation ${duration}s ease infinite`;
+
+      cssBlock.textContent = `:root {\n  --bg-angle: ${state.angle}deg;\n  --anim-duration: ${duration}s;\n}\n.gradient-background {\n  ${buildGradientCSS()}\n}`;
+
+      speedValueEl.textContent = state.speed;
+    }
+
+    // UI events
+    addColorBtn.addEventListener('click', ()=>{ state.colors.push(randHex()); renderColorList(); updatePreview(); });
+    randomBtn.addEventListener('click', ()=>{ state.colors = [randHex(), randHex(), randHex()]; renderColorList(); updatePreview(); });
+    angleEl.addEventListener('input', ()=>{ state.angle = Number(angleEl.value); updatePreview(); });
+    speedEl.addEventListener('input', ()=>{ state.speed = Number(speedEl.value); updatePreview(); });
+    applyBtn.addEventListener('click', updatePreview);
+
+    copyCssBtn.addEventListener('click', async ()=>{
+      try{
+        await navigator.clipboard.writeText(cssBlock.textContent);
+        copyCssBtn.textContent = 'Copié !'; setTimeout(()=>copyCssBtn.textContent='Copier CSS',1200);
+      }catch(e){
+        alert('Impossible de copier — utilisez votre navigateur pour copier manuellement.');
+      }
+    });
+
+    // initial render
+    renderColorList(); updatePreview();
+  </script>
+</body>
+</html>
